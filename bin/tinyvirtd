@@ -1,0 +1,184 @@
+#!/usr/bin/env perl
+use v5.14.3;
+use FindBin;
+use lib $FindBin::Bin . '/../lib';
+use strict;
+use warnings;
+use Carp qw(cluck croak carp confess);
+
+use AnyEvent;
+
+use Getopt::Long qw(:config auto_help);
+use Pod::Usage;
+use Data::Dumper;
+use IO::Handle;
+# for locking
+use Fcntl ':flock';
+use POSIX qw(setsid strftime);
+
+use Log::Any qw($log);
+use Log::Any::Adapter;
+use Log::Dispatch;
+use Log::Dispatch::Screen;
+use Log::Dispatch::File;
+use subs qw(_format_log);
+
+my $cfg = {
+    'daemon'    => 0,
+    'pidfile'   => 0,
+    'log-level' => 'info',
+};
+my $help;
+
+GetOptions(
+    'daemon'        => \$cfg->{'daemon'},
+    'pidfile=s'     => \$cfg->{'pidfile'},
+    'log-file=s'     => \$cfg->{'log-file'},
+    'log-level=s'     => \$cfg->{'log-level'},
+    'help'          => \$help,
+) or pod2usage(
+    -verbose => 2,  #2 is "full man page" 1 is usage + options ,0/undef is only usage
+    -exitval => 1,   #exit with error code if there is something wrong with arguments so anything depending on exit code fails too
+);
+
+# some options are required, display short help if user misses them
+my $required_opts = [ ];
+my $missing_opts;
+foreach (@$required_opts) {
+    if (!defined( $cfg->{$_} ) ) {
+        push @$missing_opts, $_
+    }
+}
+
+if ($help || defined( $missing_opts ) ) {
+    my $msg;
+    my $verbose = 2;
+    if (!$help && defined( $missing_opts ) ) {
+        $msg = 'Opts ' . join(', ',@$missing_opts) . " are required!\n";
+        $verbose = 1; # only short help on bad arguments
+    }
+    pod2usage(
+        -message => $msg,
+        -verbose => $verbose, #exit code doesnt work with verbose > 2, it changes to 1
+    );
+}
+# daemon/pidfile support
+my $pid = $$;
+my $lockfile;
+if($cfg->{'pidfile'}) {
+    open($lockfile, '>', $cfg->{'pidfile'}) or die($!);
+    flock($lockfile, LOCK_EX|LOCK_NB) or croak('Can\'t lock pidfile [' . $cfg->{'pidfile'} . '], another daemon running ?');
+    $lockfile->autoflush;
+}
+if ($cfg->{'daemon'}) {
+    $pid = fork();
+    if ($pid && $cfg->{'pidfile'}) {
+        print $lockfile $pid;
+    }
+} elsif ($cfg->{'pidfile'}) {
+    print $lockfile $pid;
+}
+
+if ($pid && $cfg->{'daemon'}) {
+    exit;
+} elsif ($cfg->{'daemon'}) {
+    close(STDIN);
+    close(STDOUT);
+    close(STDERR);
+    setsid();
+}
+
+# setup logging
+
+my $logger =  Log::Dispatch->new();
+if ($cfg->{'log-file'}) {
+    $logger->add(
+        Log::Dispatch::File->new(
+            filename  => $cfg->{'log-file'},
+            mode      => '>>',
+            min_level => $cfg->{'log-level'},
+            callbacks => (\&_format_log),
+        )
+      );
+}
+elsif ($cfg->{'daemon'}) {
+    $logger->add(
+        Log::Dispatch::File->new(
+            filename  => 'tinyvirtd.log',
+            mode      => '>>',
+            min_level => $cfg->{'log-level'},
+            callbacks => (\&_format_log),
+        )
+      );
+} else {
+    $logger->add(
+        Log::Dispatch::Screen->new(
+            name      => 'screen',
+            min_level => $cfg->{'log-level'},
+            callbacks => (\&_format_log),
+        )
+      )
+}
+
+Log::Any::Adapter->set( 'Dispatch', dispatcher => $logger );
+$log->debug(Dumper($cfg));
+
+# put code here
+
+
+
+sub _format_log() {
+    my %a = @_;
+    my $out;
+    my $multiline_mark = '';
+    foreach( split(/\n/,$a{'message'}) ) {
+        $out .= strftime('%Y-%m-%dT%H:%M:%S%z',localtime(time)) . ' ' . $a{'level'} . ': ' . $multiline_mark . $_ . "\n";
+        $multiline_mark = '.   '
+    }
+    return $out
+}
+__END__
+
+=head1 NAME
+
+foobar - get foo from bar
+
+=head1 SYNOPSIS
+
+foobar --option1 val1
+
+=head1 DESCRIPTION
+
+Does foo to bar
+
+=head1 OPTIONS
+
+parameters can be shortened if unique, like  --add -> -a
+
+=over 4
+
+=item B<--option1> val2
+
+sets option1 to val2. Default is val1
+
+=item B<--help>
+
+display full help
+
+=back
+
+=head1 EXAMPLES
+
+=over 4
+
+=item B<foobar>
+
+Does foo to bar with defaults
+
+=item B<foobar --bar bar2>
+
+Does foo to specified bar
+
+=back
+
+=cut
