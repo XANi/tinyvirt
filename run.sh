@@ -7,4 +7,4 @@ SCRIPTPATH=`dirname $SCRIPT`
 cd $SCRIPTPATH
 
 
-carton exec bin/tinyvirtd
+carton exec bin/tinyvirtd $@
