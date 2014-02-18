@@ -23,6 +23,8 @@ use Log::Dispatch::Screen;
 use Log::Dispatch::File;
 use subs qw(_format_log);
 
+$0 = 'tinyvirtd';
+
 my $cfg = {
     'daemon'    => 0,
     'pidfile'   => 0,
