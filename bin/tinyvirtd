@@ -29,6 +29,8 @@ my $cfg = {
     'daemon'    => 0,
     'pidfile'   => 0,
     'log-level' => 'info',
+    'multicast-net'   => '224.6.6.6',
+    'multicast-if'    => undef, # undef means "try to find it for me"
 };
 my $help;
 
@@ -125,9 +127,33 @@ elsif ($cfg->{'daemon'}) {
 Log::Any::Adapter->set( 'Dispatch', dispatcher => $logger );
 $log->debug(Dumper($cfg));
 
-# put code here
+
+if (!$cfg->{'multicast-if'}) {
+    # first, try to find route to our multicast net
+    open(R, '-|', 'ip', 'route', 'get', $cfg->{'multicast-net'});
+    my $route = <R>;
+    close(R);
+
+    $log->info("Route for multicast: $route");
+    ($cfg->{'multicast-if'}) = $route =~ / dev\s+(\S+)\s+/;
+}
+if($cfg->{'multicast-if'}) {
+    $log->notice("Using $cfg->{'multicast-if'} for multicasts[$cfg->{'multicast-net'}]");
+}
+else {
+    $log->error("Can't find any suitable interface to use for [$cfg->{'multicast-net'}]");
+    exit 1;
+}
+
+my $zmq_multicast_address = "epgm://$cfg->{'multicast-if'};$cfg->{'multicast-net'}:5555";
+
+my $end = AnyEvent->condvar();
 
 
+
+
+
+$end->recv;
 
 sub _format_log() {
     my %a = @_;
