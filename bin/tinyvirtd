@@ -21,6 +21,9 @@ use Log::Any::Adapter;
 use Log::Dispatch;
 use Log::Dispatch::Screen;
 use Log::Dispatch::File;
+
+use Tinyvirt::Cluster;
+
 use subs qw(_format_log);
 
 $0 = 'tinyvirtd';
@@ -150,6 +153,9 @@ my $zmq_multicast_address = "epgm://$cfg->{'multicast-if'};$cfg->{'multicast-net
 my $end = AnyEvent->condvar();
 
 
+my $cluster = Tinyvirt::Cluster->new(
+    multicast_addr => $zmq_multicast_address,
+);
 
 
 

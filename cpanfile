@@ -9,3 +9,6 @@ requires 'Mojolicious', '>= 4.60';
 requires 'Term::ANSIColor';
 requires 'YAML::XS';
 requires 'common::sense';
+requires 'Moo';                 #                   U
+requires 'Class::XSAccessor';   #               /---V
+requires 'namespace::clean';    #              * |--|
