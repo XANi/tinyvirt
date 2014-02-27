@@ -1,5 +1,7 @@
+requires 'AnyEvent';
 requires 'AnyEvent::HTTP';
 requires 'AnyEvent::Handle';
+requires 'EV';
 requires 'JSON::XS';
 requires 'Log::Any';
 requires 'Log::Any::Adapter';

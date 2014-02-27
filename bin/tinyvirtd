@@ -5,7 +5,6 @@ use lib $FindBin::Bin . '/../lib';
 use strict;
 use warnings;
 use Carp qw(cluck croak carp confess);
-
 use AnyEvent;
 
 use Getopt::Long qw(:config auto_help);
@@ -152,13 +151,24 @@ my $zmq_multicast_address = "epgm://$cfg->{'multicast-if'};$cfg->{'multicast-net
 
 my $end = AnyEvent->condvar();
 
+my $time_watcher = AnyEvent->timer (
+    after => 1,
+    interval => 1,
+    cb => sub {
+        # do sth
+   }
+);
+
+# handle signals
+AnyEvent->signal (signal => "INT", cb => sub { $end->send });
+
 
 my $cluster = Tinyvirt::Cluster->new(
     multicast_addr => $zmq_multicast_address,
 );
 
 
-
+$log->info('Entering main loop');
 $end->recv;
 
 sub _format_log() {
