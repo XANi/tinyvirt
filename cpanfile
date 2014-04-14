@@ -9,6 +9,7 @@ requires 'Log::Dispatch';
 requires 'ZMQ::LibZMQ3';
 requires 'Mojolicious', '>= 4.60';
 requires 'Term::ANSIColor';
+requires 'UUID::Tiny';
 requires 'YAML::XS';
 requires 'common::sense';
 requires 'Moo';                 #                   U
